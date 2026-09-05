@@ -1,0 +1,13 @@
+# Local secrets & config
+.env
+ntfy_topic.txt
+# Runtime data
+*.log
+launchd.out
+launchd.err
+last_reboot.txt
+dashboard.html
+
+# Python
+__pycache__/
+*.pyc
