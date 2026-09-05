@@ -15,6 +15,7 @@ NTFY_TOPIC="${NTFY_TOPIC:-}"
 LOSS_MAX="${LOSS_MAX:-30}"
 RTT_MAX="${RTT_MAX:-800}"
 COOLDOWN="${COOLDOWN:-3600}"
+HOME_ROUTER_MAC="${HOME_ROUTER_MAC:-}"
 export REPEATER_IP KEYCHAIN_ITEM   # used by reboot_repeater.py
 
 # regenerate dashboard on every exit
@@ -31,6 +32,20 @@ if [ "${1:-}" = "selftest" ]; then
   notify "fritz-netwatch test" "If you see this (Mac + phone), alerts work."
   echo "$(ts) SELFTEST notification sent" >> "$LOG"
   exit 0
+fi
+
+# --- safety: only run when actually on the home network ---
+GW=$(route -n get default 2>/dev/null | awk '/gateway:/{print $2}')
+if [ "$GW" != "$ROUTER_IP" ]; then
+  echo "$(ts) SKIP not on home network (gateway=${GW:-none})" >> "$LOG"
+  exit 0
+fi
+if [ -n "${HOME_ROUTER_MAC:-}" ]; then
+  GWMAC=$(arp -n "$ROUTER_IP" 2>/dev/null | awk '{print $4}')
+  if [ "$GWMAC" != "$HOME_ROUTER_MAC" ]; then
+    echo "$(ts) SKIP foreign network (gateway MAC ${GWMAC:-?})" >> "$LOG"
+    exit 0
+  fi
 fi
 
 # measure router
@@ -72,6 +87,7 @@ if python3 "$DIR/reboot_repeater.py" >> "$LOG" 2>&1; then
   echo "$(ts) -> Repeater-Reboot ausgeloest" >> "$LOG"
   notify "Repeater rebooting" "Should recover in ~2 min. Next check in 15 min."
 else
+  echo "$NOW" > "$STATE"   # also back off on failure - avoids alert spam every 15 min
   echo "$(ts) -> Reboot FEHLGESCHLAGEN" >> "$LOG"
   notify "Reboot failed" "Could not reboot repeater. Please power-cycle it manually."
 fi
