@@ -44,6 +44,10 @@ IOUT=$(ping -c 10 -i 0.2 -t 3 "$INTERNET_IP" 2>/dev/null)
 ILOSS=$(echo "$IOUT" | grep -oE '[0-9.]+% packet loss' | grep -oE '^[0-9.]+' | cut -d. -f1)
 ILOSS=${ILOSS:-100}
 
+# DOCSIS line quality (best-effort; cable models only)
+DOC=$(python3 "$DIR/fritz_docsis.py" 2>/dev/null)
+[ -n "$DOC" ] && echo "$(ts) $DOC" >> "$DIR/docsis.log"
+
 STORM=0
 [ "$LOSS" -ge "$LOSS_MAX" ] && STORM=1
 [ "$MAXR" -ge "$RTT_MAX" ] && STORM=1
